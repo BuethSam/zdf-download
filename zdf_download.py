@@ -1,8 +1,8 @@
 """Main module for the ZDF Downloader."""
 import os
-import sys
 import re
 from typing import List
+from datetime import datetime
 
 import logging
 import subprocess
@@ -66,19 +66,23 @@ class ZDFDownload():
 
     def find_filename(self, download: DownloadConfiguration) -> str:
         """Generate a new filename by adding one to the current newest filename."""
-        episode_files: List[str] = list(filter(lambda filename: download.filename in filename, sorted(os.listdir(download.folder))))
+        episode_files: List[str] = list(filter(lambda filename: download.filename in filename and '.nfo' not in filename, sorted(os.listdir(download.folder))))
+        season = datetime.strftime(datetime.now(), '%y')
 
         if len(episode_files) > 0:
             newest_filename = os.path.splitext(episode_files[-1])[0]
-            regex = re.match(r"^(.* S\d+E)(\d+)", newest_filename)
-            filename_base: str = regex.group(1)
-            filename_number: str = regex.group(2)
+            regex = re.match(r"^(.* )S(\d+)E(\d+)", newest_filename)
+            filename_base: str = "{} S{}".format(download.filename, season)
+            if season == regex.group(2):
+                filename_number: str = regex.group(3)
+            else:
+                filename_number: str = "00"
 
             new_episode_number = int(filename_number) + 1
             new_filename = filename_base + "{:0>2d}".format(new_episode_number)
 
         else:
-            new_filename = download.filename + " S01E01"
+            new_filename = download.filename + " S{}E01".format(season)
 
         return new_filename
 
@@ -93,7 +97,6 @@ class ZDFDownload():
         except subprocess.CalledProcessError:
             log.error('error downloading %s', url)
 
-
     def check_show(self, show: ShowConfiguration) -> None:
         """Check all episodes of a show for new downloads."""
         feed = feedparser.parse(show.feed_url)
@@ -102,8 +105,18 @@ class ZDFDownload():
         for entry in entries:
             if self.should_download(entry, show):
                 log.info('downloading episode %s: %s', entry.get("title"), entry.get("link"))
+                self.write_nfo(entry, show.download)
                 self.download_episode(entry.get("link"), show.download)
 
+    def write_nfo(self, entry, download):
+        """Write nfo file for episode."""
+        print(entry)
+        title = entry.get('title')
+        plot = entry.get('description')
+        aired = datetime.strptime(entry.get('published'), '%a, %d %b %Y %H:%M:%S %z').strftime('%Y-%m-%d')
+        f = open(os.path.join(download.folder, self.find_filename(download)) + ".nfo", "a")
+        f.write("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n<episodedetails>\n  <plot>{}</plot>\n  <title>{}</title>\n  <aired>{}</aired>\n</episodedetails>".format(plot, title, aired))
+        f.close()
 
     def check_all_shows(self, shows: List[ShowConfiguration]) -> None:
         """Check all shows in configuration for new downloads."""
