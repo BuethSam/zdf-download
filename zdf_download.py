@@ -110,7 +110,6 @@ class ZDFDownload():
 
     def write_nfo(self, entry, download):
         """Write nfo file for episode."""
-        print(entry)
         title = entry.get('title')
         plot = entry.get('description')
         aired = datetime.strptime(entry.get('published'), '%a, %d %b %Y %H:%M:%S %z').strftime('%Y-%m-%d')
