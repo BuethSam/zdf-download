@@ -109,11 +109,17 @@ class ZDFDownload():
 
     def write_nfo(self, entry, download):
         """Write nfo file for episode."""
+        filename = self.find_filename(download)
         title = entry.get('title')
         plot = entry.get('description')
         aired = datetime.strptime(entry.get('published'), '%a, %d %b %Y %H:%M:%S %z').strftime('%Y-%m-%d')
-        f = open(os.path.join(download.folder, self.find_filename(download)) + ".nfo", "a")
-        f.write("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n<episodedetails>\n  <plot>{}</plot>\n  <title>{}</title>\n  <aired>{}</aired>\n</episodedetails>".format(plot, title, aired))
+        print(filename)
+        regex = re.match(r".*S(\d+)E(\d+)", filename)
+        print(regex)
+        season = int(regex.group(1))
+        episode = int(regex.group(2))
+        f = open(os.path.join(download.folder, filename) + ".nfo", "w")
+        f.write("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n<episodedetails>\n  <plot>{}</plot>\n  <title>{}</title>\n  <aired>{}</aired>\n  <season>{}</season>\n  <episode>{}</episode>\n</episodedetails>".format(plot, title, aired, season, episode))
         f.close()
 
     def check_all_shows(self, shows: List[ShowConfiguration]) -> None:
