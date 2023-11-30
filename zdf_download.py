@@ -72,14 +72,12 @@ class ZDFDownload():
         if len(episode_files) > 0:
             newest_filename = os.path.splitext(episode_files[-1])[0]
             regex = re.match(r"^(.* )S(\d+)E(\d+)", newest_filename)
-            filename_base: str = "{} S{}".format(download.filename, season)
             if season == regex.group(2):
                 filename_number: str = regex.group(3)
             else:
                 filename_number: str = "00"
-
             new_episode_number = int(filename_number) + 1
-            new_filename = filename_base + "{:0>2d}".format(new_episode_number)
+            new_filename: str = "{} S{}E{:0>2d}".format(download.filename, season, new_episode_number)
 
         else:
             new_filename = download.filename + " S{}E01".format(season)
@@ -90,6 +88,7 @@ class ZDFDownload():
     def download_episode(self, url: str, download: DownloadConfiguration):
         """Download episode using youtube-dl."""
         filename = self.find_filename(download)
+        print(filename)
         download_path = download.folder + "/" + filename + ".%(ext)s"
         try:
             subprocess.run(["youtube-dl", url, "-o", download_path], check=True)
