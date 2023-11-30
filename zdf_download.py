@@ -66,7 +66,7 @@ class ZDFDownload():
 
     def find_filename(self, download: DownloadConfiguration) -> str:
         """Generate a new filename by adding one to the current newest filename."""
-        episode_files: List[str] = list(filter(lambda filename: download.filename in filename and '.nfo' not in filename, sorted(os.listdir(download.folder))))
+        episode_files: List[str] = list(filter(lambda filename: download.filename in filename and '.mp4' in filename, sorted(os.listdir(download.folder))))
         season = datetime.strftime(datetime.now(), '%y')
 
         if len(episode_files) > 0:
@@ -88,7 +88,6 @@ class ZDFDownload():
     def download_episode(self, url: str, download: DownloadConfiguration):
         """Download episode using youtube-dl."""
         filename = self.find_filename(download)
-        print(filename)
         download_path = download.folder + "/" + filename + ".%(ext)s"
         try:
             subprocess.run(["youtube-dl", url, "-o", download_path], check=True)
@@ -104,6 +103,7 @@ class ZDFDownload():
         for entry in entries:
             if self.should_download(entry, show):
                 log.info('downloading episode %s: %s', entry.get("title"), entry.get("link"))
+                self.save_thumb(entry, show.download)
                 self.write_nfo(entry, show.download)
                 self.download_episode(entry.get("link"), show.download)
 
@@ -116,9 +116,18 @@ class ZDFDownload():
         regex = re.match(r".*S(\d+)E(\d+)", filename)
         season = int(regex.group(1))
         episode = int(regex.group(2))
-        f = open(os.path.join(download.folder, filename) + ".nfo", "w")
-        f.write("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n<episodedetails>\n  <plot>{}</plot>\n  <title>{}</title>\n  <aired>{}</aired>\n  <season>{}</season>\n  <episode>{}</episode>\n</episodedetails>".format(plot, title, aired, season, episode))
-        f.close()
+        with open(os.path.join(download.folder, filename) + ".nfo", "w") as f:
+            f.write("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n<episodedetails>\n  <plot>{}</plot>\n  <title>{}</title>\n  <aired>{}</aired>\n  <season>{}</season>\n  <episode>{}</episode>\n</episodedetails>".format(plot, title, aired, season, episode))
+
+    def save_thumb(self, entry, download):
+        """Save thumbnail for episode."""
+        filename = self.find_filename(download)
+        html = requests.get(entry.get('link'))
+        thumb_url = re.match(r".*<meta property=\"og:image\"\W+content=\"(.+?)\"", str(html.content)).group(1)
+        print(thumb_url)
+        thumb = requests.get(thumb_url)
+        with open(os.path.join(download.folder, filename) + "-thumb.jpg", 'wb') as f:
+            f.write(thumb.content)
 
     def check_all_shows(self, shows: List[ShowConfiguration]) -> None:
         """Check all shows in configuration for new downloads."""
