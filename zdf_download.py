@@ -61,7 +61,7 @@ class ZDFDownload():
     def is_episode_released(self, url: str) -> bool:
         """Check if an episode has actually been released (rss feed has future episode)."""
         result = requests.get(url)
-        return "verfügbar bis" in result.text
+        return "Dieses Video existiert nicht" not in result.text and "Video verfügbar ab" not in result.text
 
 
     def find_filename(self, download: DownloadConfiguration) -> str:
