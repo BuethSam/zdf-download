@@ -95,13 +95,13 @@ class ZDFDownload():
         except subprocess.CalledProcessError:
             log.error('error downloading %s', url)
 
-    def download_file(self, url: str, download: DownloadConfiguration):
+    def download_file(self, url: str, video: str, download: DownloadConfiguration):
         """Download episode using youtube-dl."""
         filename = self.find_filename(download)
-        ext = url.split(".")[-1]
+        ext = video.split(".")[-1]
         download_path = download.folder + "/" + filename + "." + ext
         try:
-            response = requests.get(url)
+            response = requests.get(video)
             with open(download_path, 'wb') as file:
                 file.write(response.content)
             self.history.add_to_history(url)
@@ -120,7 +120,7 @@ class ZDFDownload():
                 self.write_nfo(entry, show.download)
                 video = next((link['href'] for link in entry.get('links') if link['type'].startswith('video')), None)
                 if video is not None:
-                    self.download_file(video, show.download)
+                    self.download_file(entry.get("link"), video, show.download)
                 else:
                     self.download_ytdl(entry.get("link"), show.download)
 
