@@ -119,7 +119,6 @@ class ZDFDownload():
                 self.save_thumb(entry, show.download)
                 self.write_nfo(entry, show.download)
                 video = next((link['href'] for link in entry.get('links') if link['type'].startswith('video')), None)
-                print(video)
                 if video is not None:
                     self.download_file(video, show.download)
                 else:
