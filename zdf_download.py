@@ -1,17 +1,17 @@
 """Main module for the ZDF Downloader."""
+import logging
 import os
 import re
-from typing import List
-from datetime import datetime
-
-import logging
 import subprocess
+from datetime import datetime
+from typing import List
+
 import feedparser
 import requests
 from dateutil import parser
 
-
-from configuration import Configuration, ShowConfiguration, DownloadConfiguration
+from configuration import (Configuration, DownloadConfiguration,
+                           ShowConfiguration)
 from history import History
 
 log = logging.getLogger("zdf-download")
@@ -85,7 +85,7 @@ class ZDFDownload():
         return new_filename
 
 
-    def download_episode(self, url: str, download: DownloadConfiguration):
+    def download_ytdl(self, url: str, download: DownloadConfiguration):
         """Download episode using youtube-dl."""
         filename = self.find_filename(download)
         download_path = download.folder + "/" + filename + ".%(ext)s"
@@ -94,6 +94,19 @@ class ZDFDownload():
             self.history.add_to_history(url)
         except subprocess.CalledProcessError:
             log.error('error downloading %s', url)
+
+    def download_file(self, url: str, download: DownloadConfiguration):
+        """Download episode using youtube-dl."""
+        filename = self.find_filename(download)
+        ext = url.split(".")[-1]
+        download_path = download.folder + "/" + filename + "." + ext
+        try:
+            response = requests.get(url)
+            with open(download_path, 'wb') as file:
+                file.write(response.content)
+            self.history.add_to_history(url)
+        except requests.exceptions.RequestException as e:
+            log.error('error downloading %s: %s', url, str(e))
 
     def check_show(self, show: ShowConfiguration) -> None:
         """Check all episodes of a show for new downloads."""
@@ -105,7 +118,12 @@ class ZDFDownload():
                 log.info('downloading episode %s: %s', entry.get("title"), entry.get("link"))
                 self.save_thumb(entry, show.download)
                 self.write_nfo(entry, show.download)
-                self.download_episode(entry.get("link"), show.download)
+                video = next((link['href'] for link in entry.get('links') if link['type'].startswith('video')), None)
+                print(video)
+                if video is not None:
+                    self.download_file(video, show.download)
+                else:
+                    self.download_ytdl(entry.get("link"), show.download)
 
     def write_nfo(self, entry, download):
         """Write nfo file for episode."""
@@ -124,7 +142,6 @@ class ZDFDownload():
         filename = self.find_filename(download)
         html = requests.get(entry.get('link'))
         thumb_url = re.match(r".*<meta property=\"og:image\"\W+content=\"(.+?)\"", str(html.content)).group(1)
-        print(thumb_url)
         thumb = requests.get(thumb_url)
         with open(os.path.join(download.folder, filename) + "-thumb.jpg", 'wb') as f:
             f.write(thumb.content)
